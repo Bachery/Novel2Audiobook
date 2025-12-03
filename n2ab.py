@@ -16,7 +16,9 @@ def pick_chinese_voice(engine):
 			candidates.append(v)
 	if not candidates:
 		raise RuntimeError("未找到中文语音，请在系统设置的 Spoken Content 中下载 Ting-Ting/Mei-Jia/Sin-Ji 后重试")
-	return candidates[0]
+	# 8, 18
+	return candidates[8]
+
 
 text_dir	= "《 》"
 out_dir		= "《 》_audiobook"
@@ -27,7 +29,7 @@ file_names = os.listdir(text_dir)
 file_names = sorted(file_names, key=lambda x: int(x.split(".")[0]))
 
 voice = None
-rate = 220
+rate = 230
 volume = 1.0
 
 def text_to_speech(file_name, text_dir, out_dir, voice, rate, volume):
@@ -48,7 +50,7 @@ def text_to_speech(file_name, text_dir, out_dir, voice, rate, volume):
 	del engine
 	return ebook_file_name
 
-for file_name in tqdm.tqdm(file_names[350:400]):
+for file_name in tqdm.tqdm(file_names[:50]):
 	if not file_name.endswith(".txt"):
 		continue
 	text_to_speech(file_name, text_dir, out_dir, voice, rate, volume)

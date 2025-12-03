@@ -57,23 +57,19 @@ def process_file(input_file, output_file):
 		lines = f.readlines()
 
 	new_lines = []
-	chapter_name = ''
+	# chapter_name = ''
 	for line in lines:
 		if "(" in line: line = line.replace("(", "（")
 		if ")" in line: line = line.replace(")", "）")
+		line = line.strip()
 		if line.startswith("第") and re.match(r"第.+?章", line):
-			line = line.strip()
-			compare = compare_title(line, chapter_name)
-			if compare: 
-				line = compare
-				# remove chapter_name from new_lines
-				for i in range(len(new_lines)-1, -1, -1):
-					if new_lines[i] == chapter_name+"\n":
-						new_lines.pop(i)
-						break
-			chapter_name = line
+			parts = line.split(" ")
+			if parts[1].endswith("章"):
+				line = "第" + " ".join(parts[1:])
+			# chapter_name = line
 			new_lines.append('\n')
-			new_lines.append(line + '\n')
+			# new_lines.append(line + '\n')
+			new_lines.append(line)
 		# if the line only contains multiple "="
 		elif line.strip().count('=') >= 10:
 			continue
@@ -89,6 +85,7 @@ def process_file(input_file, output_file):
 
 	with open(output_file, "w", encoding="utf-8", errors="ignore") as f:
 		f.writelines(new_lines)
+
 
 if __name__ == "__main__":
 	input_file = "《 》.txt"
