@@ -1,23 +1,24 @@
-#%%
-import os
-import tqdm
-from pydub import AudioSegment
+from __future__ import annotations
 
-aiff_dir	= "《 》_audiobook"
-mp3_dir		= "《 》_audiobook_mp3"
+from pathlib import Path
 
-os.makedirs(mp3_dir, exist_ok=True)
+from novel2audiobook.models import AudioConvertOptions
+from novel2audiobook.pipeline import convert_audio_directory
 
-file_names = os.listdir(aiff_dir)
-# file_names = sorted(file_names, key=lambda x: int(x.split("-")[0]))
-# file_names = sorted(file_names, key=lambda x: int(x.split(".")[0]))
+DEFAULT_AIFF_DIR = Path("Output/《 》_audiobook")
+DEFAULT_MP3_DIR = Path("Output/《 》_audiobook_mp3")
 
-for file in tqdm.tqdm(file_names):
-	if file.endswith(".aiff"):
-		aiff_path = os.path.join(aiff_dir, file)
-		mp3_path = os.path.join(mp3_dir, file.replace(".aiff", ".mp3"))
-		audio = AudioSegment.from_file(aiff_path, format="aiff")
-		audio.export(mp3_path, format="mp3")
-		del audio
 
-# %%
+def convert_directory(aiff_dir: str | Path, mp3_dir: str | Path) -> list[Path]:
+    return convert_audio_directory(
+        aiff_dir,
+        mp3_dir,
+        converter_name="pydub",
+        source_ext=".aiff",
+        options=AudioConvertOptions(source_format="aiff", target_format="mp3"),
+    )
+
+
+if __name__ == "__main__":
+    files = convert_directory(DEFAULT_AIFF_DIR, DEFAULT_MP3_DIR)
+    print(f"转换完成，共生成 {len(files)} 个 mp3 文件")

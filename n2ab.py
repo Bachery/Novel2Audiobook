@@ -1,77 +1,90 @@
-#%%
-import os
-import tqdm
-import pyttsx3
+from __future__ import annotations
 
-def pick_chinese_voice(engine):
-	voices = engine.getProperty('voices')
-	candidates = []
-	for v in voices:
-		langs = getattr(v, 'languages', []) or []
-		langs = [x.decode('utf-8','ignore') if isinstance(x, (bytes, bytearray)) else str(x)
-				for x in langs]
-		text = (' '.join(langs) + ' ' + (getattr(v,'name','') or '') + ' ' + (getattr(v,'id','') or '')).lower()
-		keys = ['zh', 'zh-cn', 'zh_cn', 'zh-hk', 'zh_tw', 'chinese', 'mandarin', 'ting-ting', 'mei-jia', 'sin-ji']
-		if any(k in text for k in keys):
-			candidates.append(v)
-	if not candidates:
-		raise RuntimeError("未找到中文语音，请在系统设置的 Spoken Content 中下载 Ting-Ting/Mei-Jia/Sin-Ji 后重试")
-	# 8, 18
-	return candidates[8]
+from pathlib import Path
+
+from novel2audiobook.models import Book, TTSOptions
+from novel2audiobook.pipeline import load_book, synthesize_book
+from novel2audiobook.tts.pyttsx3_engine import DEFAULT_CHINESE_VOICE_INDEX, pick_chinese_voice
+
+DEFAULT_TEXT_DIR = Path("Novels/《 》")
+DEFAULT_OUTPUT_DIR = Path("Output/《 》_audiobook")
+DEFAULT_START = 1180
+DEFAULT_STOP = 1200
+DEFAULT_VOICE_INDEX = DEFAULT_CHINESE_VOICE_INDEX
+DEFAULT_RATE = 230
+DEFAULT_VOLUME = 1.0
 
 
-text_dir	= "《 》"
-out_dir		= "《 》_audiobook"
-
-os.makedirs(out_dir, exist_ok=True)
-file_names = os.listdir(text_dir)
-# file_names = sorted(file_names, key=lambda x: int(x.split("-")[0]))
-file_names = sorted(file_names, key=lambda x: int(x.split(".")[0]))
-
-voice = None
-rate = 230
-volume = 1.0
-
-def text_to_speech(file_name, text_dir, out_dir, voice, rate, volume):
-	ebook_file_name = os.path.join(out_dir, file_name.replace(".txt", ".aiff"))
-	with open(os.path.join(text_dir, file_name), "r", encoding="utf-8") as f:
-		text = f.read()
-	engine = pyttsx3.init()
-	if voice is not None:
-		engine.setProperty('voice', voice)
-	else:
-		cn_voice = pick_chinese_voice(engine)
-		engine.setProperty('voice', cn_voice.id)
-	engine.setProperty('rate', rate)
-	engine.setProperty('volume', volume)
-	engine.save_to_file(text, ebook_file_name)
-	engine.runAndWait()
-	engine.stop()
-	del engine
-	return ebook_file_name
-
-for file_name in tqdm.tqdm(file_names[:50]):
-	if not file_name.endswith(".txt"):
-		continue
-	text_to_speech(file_name, text_dir, out_dir, voice, rate, volume)
-
-
-# import concurrent.futures
-# for file_name in tqdm.tqdm(file_names[350:360]):
-# 	if not file_name.endswith(".txt"):
-# 		continue
-# 	try:
-# 		with concurrent.futures.ProcessPoolExecutor() as executor:
-# 			future = executor.submit(
-# 				text_to_speech, file_name, text_dir, out_dir, voice, rate, volume
-# 			)
-# 			result = future.result(timeout=600)  # 600秒即10分钟
-# 	except Exception as e:
-# 		print(f"{file_name} 语音转换超时/失败，已跳过。原因：{e}")
-# 		fail_file = os.path.join(text_dir, file_name.replace(".txt", ".aiff"))
-# 		if os.path.exists(fail_file):
-# 			os.remove(fail_file)  # 删除问题文件
+def text_to_speech(
+    file_name: str,
+    text_dir: str | Path,
+    out_dir: str | Path,
+    voice: str | None,
+    rate: int,
+    volume: float,
+    *,
+    voice_index: int | None = DEFAULT_VOICE_INDEX,
+) -> Path:
+    book = load_book(Path(text_dir), input_format="txt", encoding="utf-8")
+    chapter = next(
+        (chapter for chapter in book.chapters if chapter.source_path and chapter.source_path.name == file_name),
+        None,
+    )
+    if chapter is None:
+        raise FileNotFoundError(f"未找到章节文件: {file_name}")
+    subset = Book(title=book.title, chapters=[chapter], metadata=book.metadata)
+    files = synthesize_book(
+        subset,
+        out_dir,
+        engine_name="pyttsx3",
+        options=TTSOptions(
+            voice=voice,
+            voice_index=voice_index,
+            rate=rate,
+            volume=volume,
+            audio_format="aiff",
+        ),
+        keep_source_names=True,
+        show_progress=False,
+    )
+    return files[0]
 
 
+def batch_text_to_speech(
+    text_dir: str | Path,
+    out_dir: str | Path,
+    *,
+    start: int = DEFAULT_START,
+    stop: int = DEFAULT_STOP,
+    voice: str | None = None,
+    voice_index: int | None = DEFAULT_VOICE_INDEX,
+    rate: int = DEFAULT_RATE,
+    volume: float = DEFAULT_VOLUME,
+) -> list[Path]:
+    book = load_book(Path(text_dir), input_format="txt", encoding="utf-8")
+    subset = Book(
+        title=book.title,
+        chapters=book.chapters[start:stop],
+        metadata=book.metadata,
+    )
+    if not subset.chapters:
+        return []
+    return synthesize_book(
+        subset,
+        out_dir,
+        engine_name="pyttsx3",
+        options=TTSOptions(
+            voice=voice,
+            voice_index=voice_index,
+            rate=rate,
+            volume=volume,
+            audio_format="aiff",
+        ),
+        keep_source_names=True,
+        show_progress=True,
+    )
 
-# %%
+
+if __name__ == "__main__":
+    files = batch_text_to_speech(DEFAULT_TEXT_DIR, DEFAULT_OUTPUT_DIR)
+    print(f"生成了 {len(files)} 个音频文件到 {DEFAULT_OUTPUT_DIR}")
