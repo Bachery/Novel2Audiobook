@@ -33,6 +33,14 @@ class TTSOptions:
     language: str | None = None
     device: str | None = None
     speed: float | None = None
+    task: str | None = None
+    model_id: str | None = None
+    instruct: str | None = None
+    ref_audio: str | Path | None = None
+    ref_text: str | None = None
+    dtype: str | None = None
+    attn_implementation: str | None = None
+    voice_clone_x_vector_only_mode: bool = False
     rate: int = 230
     volume: float = 1.0
     audio_format: str | None = None

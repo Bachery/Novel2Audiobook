@@ -1,0 +1,31 @@
+# Qwen3-TTS local profile example for Novel2Audiobook
+# Supported config formats: .yaml/.yml, .toml, .json
+
+tts:
+  engine: qwen3tts
+
+  # Modes:
+  # - custom_voice
+  # - voice_design
+  # - voice_clone
+  task: custom_voice
+
+  # Optional explicit model override.
+  # If omitted, the project will choose a default model based on task.
+  # model_id: Qwen/Qwen3-TTS-12Hz-0.6B-CustomVoice
+
+  # Basic generation settings
+  language: Chinese
+  speaker: Vivian
+  device: auto
+  # dtype: float32
+  # attn_implementation: flash_attention_2
+  audio_format: wav
+
+  # voice_design only
+  # instruct: 温柔、克制、偏成熟的女声
+
+  # voice_clone only
+  # ref_audio: ../refs/narrator.wav
+  # ref_text: 这是参考音频对应的文本。
+  # voice_clone_x_vector_only_mode: false

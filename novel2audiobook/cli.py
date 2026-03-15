@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 
+from novel2audiobook.config import extract_tts_config, load_config_mapping, resolve_config_paths
 from novel2audiobook.audio import available_audio_converters
 from novel2audiobook.inputs import available_input_providers
 from novel2audiobook.models import AudioConvertOptions, TTSOptions
@@ -12,18 +13,54 @@ from novel2audiobook.processors.cleanup import normalize_text_file
 from novel2audiobook.tts import available_tts_engines, create_tts_engine
 
 
-def build_tts_options(args: argparse.Namespace) -> TTSOptions:
-    engine = create_tts_engine(args.engine)
+def load_tts_config(args: argparse.Namespace) -> dict[str, object]:
+    config_path = getattr(args, "tts_config", None)
+    if not config_path:
+        return {}
+    data, path = load_config_mapping(config_path)
+    tts_config = extract_tts_config(data)
+    return resolve_config_paths(tts_config, path)
+
+
+def pick_tts_arg(args: argparse.Namespace, config: dict[str, object], key: str, fallback: object = None) -> object:
+    value = getattr(args, key, None)
+    if value is not None:
+        return value
+    return config.get(key, fallback)
+
+
+def resolve_tts_engine_name(args: argparse.Namespace, config: dict[str, object] | None = None) -> str:
+    merged = config or {}
+    engine_name = pick_tts_arg(args, merged, "engine", "pyttsx3")
+    if not isinstance(engine_name, str):
+        raise ValueError("TTS engine name must be a string")
+    return engine_name
+
+
+def build_tts_options(args: argparse.Namespace, config: dict[str, object] | None = None) -> TTSOptions:
+    merged = config or {}
+    engine_name = resolve_tts_engine_name(args, merged)
+    engine = create_tts_engine(engine_name)
     return TTSOptions(
-        voice=getattr(args, "voice", None),
-        voice_index=getattr(args, "voice_index", None),
-        speaker=getattr(args, "speaker", None),
-        language=getattr(args, "language", None),
-        device=getattr(args, "device", None),
-        speed=getattr(args, "speed", None),
-        rate=getattr(args, "rate", 230),
-        volume=getattr(args, "volume", 1.0),
-        audio_format=getattr(args, "audio_format", None) or engine.default_audio_format(),
+        voice=pick_tts_arg(args, merged, "voice"),
+        voice_index=pick_tts_arg(args, merged, "voice_index"),
+        speaker=pick_tts_arg(args, merged, "speaker"),
+        language=pick_tts_arg(args, merged, "language"),
+        device=pick_tts_arg(args, merged, "device"),
+        speed=pick_tts_arg(args, merged, "speed"),
+        task=pick_tts_arg(args, merged, "task"),
+        model_id=pick_tts_arg(args, merged, "model_id"),
+        instruct=pick_tts_arg(args, merged, "instruct"),
+        ref_audio=pick_tts_arg(args, merged, "ref_audio"),
+        ref_text=pick_tts_arg(args, merged, "ref_text"),
+        dtype=pick_tts_arg(args, merged, "dtype"),
+        attn_implementation=pick_tts_arg(args, merged, "attn_implementation"),
+        voice_clone_x_vector_only_mode=bool(
+            pick_tts_arg(args, merged, "voice_clone_x_vector_only_mode", False)
+        ),
+        rate=pick_tts_arg(args, merged, "rate", 230),
+        volume=pick_tts_arg(args, merged, "volume", 1.0),
+        audio_format=pick_tts_arg(args, merged, "audio_format", engine.default_audio_format()),
     )
 
 
@@ -64,15 +101,24 @@ def build_parser() -> argparse.ArgumentParser:
     tts.add_argument("--splitter", default="chinese_novel")
     tts.add_argument("--include-volumes", action="store_true")
     tts.add_argument("--skip-normalize", action="store_true")
-    tts.add_argument("--engine", default="pyttsx3")
+    tts.add_argument("--tts-config")
+    tts.add_argument("--engine")
     tts.add_argument("--voice")
     tts.add_argument("--speaker")
     tts.add_argument("--language")
     tts.add_argument("--device")
+    tts.add_argument("--task")
+    tts.add_argument("--model-id")
+    tts.add_argument("--instruct")
+    tts.add_argument("--ref-audio")
+    tts.add_argument("--ref-text")
+    tts.add_argument("--dtype")
+    tts.add_argument("--attn-implementation")
+    tts.add_argument("--voice-clone-x-vector-only-mode", action="store_true", default=None)
     tts.add_argument("--speed", type=float)
-    tts.add_argument("--voice-index", type=int, default=8)
-    tts.add_argument("--rate", type=int, default=230)
-    tts.add_argument("--volume", type=float, default=1.0)
+    tts.add_argument("--voice-index", type=int)
+    tts.add_argument("--rate", type=int)
+    tts.add_argument("--volume", type=float)
     tts.add_argument("--audio-format")
 
     convert = subparsers.add_parser("convert", help="批量转换音频格式")
@@ -93,15 +139,24 @@ def build_parser() -> argparse.ArgumentParser:
     run.add_argument("--splitter", default="chinese_novel")
     run.add_argument("--include-volumes", action="store_true")
     run.add_argument("--skip-normalize", action="store_true")
-    run.add_argument("--engine", default="pyttsx3")
+    run.add_argument("--tts-config")
+    run.add_argument("--engine")
     run.add_argument("--voice")
     run.add_argument("--speaker")
     run.add_argument("--language")
     run.add_argument("--device")
+    run.add_argument("--task")
+    run.add_argument("--model-id")
+    run.add_argument("--instruct")
+    run.add_argument("--ref-audio")
+    run.add_argument("--ref-text")
+    run.add_argument("--dtype")
+    run.add_argument("--attn-implementation")
+    run.add_argument("--voice-clone-x-vector-only-mode", action="store_true", default=None)
     run.add_argument("--speed", type=float)
-    run.add_argument("--voice-index", type=int, default=8)
-    run.add_argument("--rate", type=int, default=230)
-    run.add_argument("--volume", type=float, default=1.0)
+    run.add_argument("--voice-index", type=int)
+    run.add_argument("--rate", type=int)
+    run.add_argument("--volume", type=float)
     run.add_argument("--audio-format")
     run.add_argument("--converter", default="pydub")
     run.add_argument("--target-format", default="mp3")
@@ -126,7 +181,10 @@ def main(argv: list[str] | None = None) -> int:
         print("candidate_index\tvoice_id\tname\tlanguages\tdefault")
         for voice in engine.list_voices():
             if args.chinese_only and voice.candidate_index is None:
-                if not any(language.startswith("ZH") for language in voice.languages):
+                if not any(
+                    language.upper().startswith("ZH") or language.upper().startswith("CHINESE")
+                    for language in voice.languages
+                ):
                     continue
             languages = ", ".join(voice.languages) or "-"
             candidate = "-" if voice.candidate_index is None else str(voice.candidate_index)
@@ -153,7 +211,9 @@ def main(argv: list[str] | None = None) -> int:
         return 0
 
     if args.command == "tts":
-        tts_options = build_tts_options(args)
+        tts_config = load_tts_config(args)
+        tts_engine = resolve_tts_engine_name(args, tts_config)
+        tts_options = build_tts_options(args, tts_config)
         book = prepare_book(
             source=args.source,
             input_format=args.input_format,
@@ -165,7 +225,7 @@ def main(argv: list[str] | None = None) -> int:
         files = synthesize_book(
             book,
             args.output_dir,
-            engine_name=args.engine,
+            engine_name=tts_engine,
             options=tts_options,
         )
         print(f"generated {len(files)} audio files in {Path(args.output_dir)}")
@@ -187,7 +247,9 @@ def main(argv: list[str] | None = None) -> int:
         return 0
 
     if args.command == "run":
-        tts_options = build_tts_options(args)
+        tts_config = load_tts_config(args)
+        tts_engine = resolve_tts_engine_name(args, tts_config)
+        tts_options = build_tts_options(args, tts_config)
         results = run_pipeline(
             source=args.source,
             chapters_dir=args.chapters_dir,
@@ -198,7 +260,7 @@ def main(argv: list[str] | None = None) -> int:
             splitter_name=args.splitter,
             include_volumes=args.include_volumes,
             normalize=not args.skip_normalize,
-            tts_engine=args.engine,
+            tts_engine=tts_engine,
             tts_options=tts_options,
             audio_converter=args.converter,
             convert_options=AudioConvertOptions(
