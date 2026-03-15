@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from novel2audiobook.tts.melotts_engine import MeloTTSEngine
 from novel2audiobook.tts.base import TTSEngine
 from novel2audiobook.tts.pyttsx3_engine import Pyttsx3Engine
 
@@ -25,3 +26,4 @@ def available_tts_engines() -> list[str]:
 
 
 register_tts_engine("pyttsx3", Pyttsx3Engine)
+register_tts_engine("melotts", MeloTTSEngine)

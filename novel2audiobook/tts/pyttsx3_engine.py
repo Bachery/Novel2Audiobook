@@ -60,6 +60,9 @@ class Pyttsx3Engine(TTSEngine):
     def __init__(self, auto_pick_chinese_voice: bool = True) -> None:
         self.auto_pick_chinese_voice = auto_pick_chinese_voice
 
+    def default_audio_format(self) -> str:
+        return "aiff"
+
     def synthesize_text(self, text: str, output_path: Path, options: TTSOptions) -> Path:
         try:
             import pyttsx3

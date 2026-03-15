@@ -58,6 +58,7 @@ def synthesize_book(
     output_path = ensure_directory(Path(output_dir))
     engine = create_tts_engine(engine_name)
     synth_options = options or TTSOptions()
+    audio_format = synth_options.audio_format or engine.default_audio_format()
 
     chapters = book.chapters or [
         Chapter(index=1, title=book.title, content=book.raw_text or "", source_path=None)
@@ -70,7 +71,7 @@ def synthesize_book(
             if keep_source_names and chapter.source_path is not None
             else str(chapter.index)
         )
-        target_path = output_path / f"{stem}.{synth_options.audio_format}"
+        target_path = output_path / f"{stem}.{audio_format}"
         engine.synthesize_text(chapter.content, target_path, synth_options)
         written_files.append(target_path)
     return written_files
@@ -135,11 +136,17 @@ def run_pipeline(
         actual_audio_dir = Path(audio_dir) if audio_dir is not None else None
         if actual_audio_dir is None:
             raise ValueError("converted_dir requires audio_dir")
+        source_ext = None
+        if "audio" in results and results["audio"]:
+            source_ext = results["audio"][0].suffix
+        if source_ext is None:
+            engine = create_tts_engine(tts_engine)
+            source_ext = f".{((tts_options or TTSOptions()).audio_format or engine.default_audio_format())}"
         results["converted"] = convert_audio_directory(
             actual_audio_dir,
             converted_dir,
             converter_name=audio_converter,
-            source_ext=f".{(tts_options or TTSOptions()).audio_format}",
+            source_ext=source_ext,
             options=convert_options,
         )
     return results

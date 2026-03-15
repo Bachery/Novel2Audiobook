@@ -12,6 +12,21 @@ from novel2audiobook.processors.cleanup import normalize_text_file
 from novel2audiobook.tts import available_tts_engines, create_tts_engine
 
 
+def build_tts_options(args: argparse.Namespace) -> TTSOptions:
+    engine = create_tts_engine(args.engine)
+    return TTSOptions(
+        voice=getattr(args, "voice", None),
+        voice_index=getattr(args, "voice_index", None),
+        speaker=getattr(args, "speaker", None),
+        language=getattr(args, "language", None),
+        device=getattr(args, "device", None),
+        speed=getattr(args, "speed", None),
+        rate=getattr(args, "rate", 230),
+        volume=getattr(args, "volume", 1.0),
+        audio_format=getattr(args, "audio_format", None) or engine.default_audio_format(),
+    )
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="novel2audiobook",
@@ -51,10 +66,14 @@ def build_parser() -> argparse.ArgumentParser:
     tts.add_argument("--skip-normalize", action="store_true")
     tts.add_argument("--engine", default="pyttsx3")
     tts.add_argument("--voice")
+    tts.add_argument("--speaker")
+    tts.add_argument("--language")
+    tts.add_argument("--device")
+    tts.add_argument("--speed", type=float)
     tts.add_argument("--voice-index", type=int, default=8)
     tts.add_argument("--rate", type=int, default=230)
     tts.add_argument("--volume", type=float, default=1.0)
-    tts.add_argument("--audio-format", default="aiff")
+    tts.add_argument("--audio-format")
 
     convert = subparsers.add_parser("convert", help="批量转换音频格式")
     convert.add_argument("input_dir")
@@ -76,10 +95,14 @@ def build_parser() -> argparse.ArgumentParser:
     run.add_argument("--skip-normalize", action="store_true")
     run.add_argument("--engine", default="pyttsx3")
     run.add_argument("--voice")
+    run.add_argument("--speaker")
+    run.add_argument("--language")
+    run.add_argument("--device")
+    run.add_argument("--speed", type=float)
     run.add_argument("--voice-index", type=int, default=8)
     run.add_argument("--rate", type=int, default=230)
     run.add_argument("--volume", type=float, default=1.0)
-    run.add_argument("--audio-format", default="aiff")
+    run.add_argument("--audio-format")
     run.add_argument("--converter", default="pydub")
     run.add_argument("--target-format", default="mp3")
     run.add_argument("--bitrate")
@@ -103,7 +126,8 @@ def main(argv: list[str] | None = None) -> int:
         print("candidate_index\tvoice_id\tname\tlanguages\tdefault")
         for voice in engine.list_voices():
             if args.chinese_only and voice.candidate_index is None:
-                continue
+                if not any(language.startswith("ZH") for language in voice.languages):
+                    continue
             languages = ", ".join(voice.languages) or "-"
             candidate = "-" if voice.candidate_index is None else str(voice.candidate_index)
             default_marker = "default" if voice.is_default else ""
@@ -129,6 +153,7 @@ def main(argv: list[str] | None = None) -> int:
         return 0
 
     if args.command == "tts":
+        tts_options = build_tts_options(args)
         book = prepare_book(
             source=args.source,
             input_format=args.input_format,
@@ -141,13 +166,7 @@ def main(argv: list[str] | None = None) -> int:
             book,
             args.output_dir,
             engine_name=args.engine,
-            options=TTSOptions(
-                voice=args.voice,
-                voice_index=args.voice_index,
-                rate=args.rate,
-                volume=args.volume,
-                audio_format=args.audio_format,
-            ),
+            options=tts_options,
         )
         print(f"generated {len(files)} audio files in {Path(args.output_dir)}")
         return 0
@@ -168,6 +187,7 @@ def main(argv: list[str] | None = None) -> int:
         return 0
 
     if args.command == "run":
+        tts_options = build_tts_options(args)
         results = run_pipeline(
             source=args.source,
             chapters_dir=args.chapters_dir,
@@ -179,16 +199,10 @@ def main(argv: list[str] | None = None) -> int:
             include_volumes=args.include_volumes,
             normalize=not args.skip_normalize,
             tts_engine=args.engine,
-            tts_options=TTSOptions(
-                voice=args.voice,
-                voice_index=args.voice_index,
-                rate=args.rate,
-                volume=args.volume,
-                audio_format=args.audio_format,
-            ),
+            tts_options=tts_options,
             audio_converter=args.converter,
             convert_options=AudioConvertOptions(
-                source_format=args.audio_format,
+                source_format=tts_options.audio_format,
                 target_format=args.target_format,
                 bitrate=args.bitrate,
             ),

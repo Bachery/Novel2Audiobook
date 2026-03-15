@@ -13,3 +13,6 @@ class TTSEngine(ABC):
 
     def list_voices(self) -> list[VoiceInfo]:
         return []
+
+    def default_audio_format(self) -> str:
+        return "wav"

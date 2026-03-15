@@ -29,9 +29,13 @@ class Book:
 class TTSOptions:
     voice: str | None = None
     voice_index: int | None = None
+    speaker: str | None = None
+    language: str | None = None
+    device: str | None = None
+    speed: float | None = None
     rate: int = 230
     volume: float = 1.0
-    audio_format: str = "aiff"
+    audio_format: str | None = None
 
 
 @dataclass(slots=True)

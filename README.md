@@ -6,7 +6,7 @@
 
 - `novel2audiobook/inputs`: 输入源接口与实现，当前内置 `txt`
 - `novel2audiobook/processors`: 文本清洗与章节切分
-- `novel2audiobook/tts`: TTS 引擎接口与实现，当前内置 `pyttsx3`
+- `novel2audiobook/tts`: TTS 引擎接口与实现，当前内置 `pyttsx3`、`melotts`
 - `novel2audiobook/audio`: 音频转码接口与实现，当前内置 `pydub`
 - `novel2audiobook/pipeline.py`: 组合各模块的统一流程
 - `app.py`: CLI 入口
@@ -16,9 +16,11 @@
 ```bash
 python3 app.py list
 python3 app.py list-voices --engine pyttsx3 --chinese-only
+python3 app.py list-voices --engine melotts --chinese-only
 python3 app.py normalize "Novels/书名.txt" "Novels/书名_清洗后.txt"
 python3 app.py split "Novels/书名.txt" "Novels/书名"
 python3 app.py tts "Novels/书名" "Output/书名_audiobook" --engine pyttsx3 --voice-index 8 --rate 230
+python3 app.py tts "Novels/书名" "Output/书名_melo" --engine melotts --language ZH --speaker ZH --device auto --speed 1.0
 python3 app.py convert "Output/书名_audiobook" "Output/书名_audiobook_mp3"
 python3 app.py run "Novels/书名.txt" --chapters-dir "Novels/书名" --audio-dir "Output/书名_audiobook" --converted-dir "Output/书名_audiobook_mp3" --voice-index 8
 ```
@@ -36,6 +38,28 @@ python3 app.py run "Novels/书名.txt" --chapters-dir "Novels/书名" --audio-di
 2. 调用 `register_tts_engine("edge_tts", YourTTSEngine)`
 
 当前 `pyttsx3` 的默认中文语音索引是 `8`。可以通过 CLI 的 `--voice-index`，或代码里的 `TTSOptions(voice_index=...)` / `n2ab.py` 里的 `DEFAULT_VOICE_INDEX` 修改。
+
+## MeloTTS
+
+- 官方仓库: https://github.com/myshell-ai/MeloTTS
+- 官方安装说明: https://github.com/myshell-ai/MeloTTS/blob/main/docs/install.md
+- 适合场景: 本地神经网络 TTS，多语言，支持中文夹英文，官方说明 CPU 也可实时推理
+
+按官方文档，在 Linux 或 macOS 上可以这样安装：
+
+```bash
+git clone https://github.com/myshell-ai/MeloTTS.git
+cd MeloTTS
+pip install -e .
+python -m unidic download
+```
+
+如果 macOS 本地安装遇到兼容问题，官方也提供了 Docker 运行方式。接入本项目后，可直接使用：
+
+```bash
+python3 app.py list-voices --engine melotts
+python3 app.py tts "Novels/test" "Output/test_melo" --engine melotts --language ZH --speaker ZH --device auto --speed 1.0
+```
 
 新增音频转码器：
 
