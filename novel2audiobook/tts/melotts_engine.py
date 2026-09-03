@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections.abc import Mapping
 from pathlib import Path
 
 from novel2audiobook.models import TTSOptions, VoiceInfo
@@ -79,8 +80,22 @@ class MeloTTSEngine(TTSEngine):
     @staticmethod
     def _resolve_speaker(model: object, language: str, options: TTSOptions) -> int:
         speaker_name = options.speaker or options.voice or default_speaker_for_language(language)
-        speaker_ids = getattr(getattr(getattr(model, "hps", None), "data", None), "spk2id", None)
-        if not isinstance(speaker_ids, dict) or not speaker_ids:
+        hps = getattr(model, "hps", None)
+        data = getattr(hps, "data", None)
+        if data is None and hps is not None:
+            try:
+                data = hps["data"]
+            except (KeyError, TypeError):
+                data = None
+        speaker_ids = getattr(data, "spk2id", None)
+        if speaker_ids is None and data is not None:
+            try:
+                speaker_ids = data["spk2id"]
+            except (KeyError, TypeError):
+                speaker_ids = None
+        if isinstance(speaker_ids, Mapping):
+            speaker_ids = dict(speaker_ids)
+        if not speaker_ids:
             raise RuntimeError("MeloTTS 模型未提供 speaker 映射")
 
         if speaker_name in speaker_ids:
