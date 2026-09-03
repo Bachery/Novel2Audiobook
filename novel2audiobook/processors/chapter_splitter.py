@@ -7,7 +7,7 @@ from pathlib import Path
 from novel2audiobook.models import Book, Chapter
 from novel2audiobook.utils import ensure_directory
 
-CHAPTER_RE = re.compile(r"^第.+?[章回节]")
+CHAPTER_RE = re.compile(r"^第[零一二三四五六七八九十百千万两0-9]+章(?:$|\s|[^章])")
 VOLUME_RE = re.compile(r"^第.+?卷")
 EXTRA_RE = re.compile(r"^番外(?:[零一二三四五六七八九十百千0-9].*|[\s:：\(\)（）【】].*|$)")
 AFTERWORD_RE = re.compile(r"^完本感言(?:[\s:：\(\)（）【】].*|$)")

@@ -5,6 +5,7 @@ from pathlib import Path
 
 EXTRA_RE = re.compile(r"^番外(?:[零一二三四五六七八九十百千0-9].*|[\s:：\(\)（）【】].*|$)")
 AFTERWORD_RE = re.compile(r"^完本感言(?:[\s:：\(\)（）【】].*|$)")
+CHAPTER_RE = re.compile(r"^第[零一二三四五六七八九十百千万两0-9]+章(?:$|\s|[^章])")
 
 
 def extract_chinese_numbers(text: str) -> list[str]:
@@ -64,7 +65,7 @@ def compare_title(str1: str, str2: str, diff: int = 1) -> str | bool:
 
 
 def is_chapter_heading(line: str) -> bool:
-    return bool(re.match(r"^第.+?章", line)) or bool(EXTRA_RE.match(line)) or bool(AFTERWORD_RE.match(line))
+    return bool(CHAPTER_RE.match(line)) or bool(EXTRA_RE.match(line)) or bool(AFTERWORD_RE.match(line))
 
 
 def normalize_text(text: str) -> str:
