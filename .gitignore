@@ -1,7 +1,9 @@
 *.aiff
 *.mp3
+*.wav
 *.txt
 .DS_Store
 __pycache__/
 *.pyc
 .cache/
+*.sh

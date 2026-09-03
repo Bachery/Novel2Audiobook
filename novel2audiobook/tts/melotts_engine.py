@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
+from contextlib import redirect_stderr, redirect_stdout
+from io import StringIO
 from pathlib import Path
 
 from novel2audiobook.models import TTSOptions, VoiceInfo
@@ -120,7 +122,9 @@ class MeloTTSEngine(TTSEngine):
 
         model = self._load_model(language, device)
         speaker_id = self._resolve_speaker(model, language, options)
-        model.tts_to_file(text, speaker_id, str(output_path), speed=speed)
+        # MeloTTS 会直接把完整文本和推理进度打印到终端；运行批处理时静默这些输出。
+        with redirect_stdout(StringIO()), redirect_stderr(StringIO()):
+            model.tts_to_file(text, speaker_id, str(output_path), speed=speed)
         return output_path
 
     def list_voices(self) -> list[VoiceInfo]:
